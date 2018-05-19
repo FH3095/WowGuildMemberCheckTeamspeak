@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimerTask;
+import java.util.Vector;
 
 import javax.annotation.Nonnull;
 import javax.ws.rs.WebApplicationException;
@@ -159,8 +160,16 @@ public class SyncTask {
 			for (int groupId : addToGroups) {
 				doUserGroupChange(groupId, userId, false, false);
 			}
-			for (int groupId : removeFromGroups) {
-				doUserGroupChange(groupId, userId, true, false);
+			if (removeFromGroups.contains(-1)) {
+				Vector<HashMap<String, String>> groups = plugin.getQuery()
+						.getList(JTS3ServerQuery.LISTMODE_SERVERGROUPSBYCLIENTID, "cldbid=" + userId);
+				for (HashMap<String, String> group : groups) {
+					doUserGroupChange(Integer.parseInt(group.get("sgid")), userId, true, false);
+				}
+			} else {
+				for (int groupId : removeFromGroups) {
+					doUserGroupChange(groupId, userId, true, false);
+				}
 			}
 		}
 

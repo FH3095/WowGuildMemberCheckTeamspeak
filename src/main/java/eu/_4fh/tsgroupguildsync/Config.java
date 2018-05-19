@@ -179,10 +179,11 @@ public class Config implements LoadConfiguration {
 		onLeaveRemoveFrom = new ArrayList<>();
 
 		onJoinAddTo.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_JOIN_ADD_TO_GROUPS)));
-		onJoinRemoveFrom.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_JOIN_REMOVE_FROM_GROUPS)));
+		onJoinRemoveFrom
+				.addAll(readIntListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_JOIN_REMOVE_FROM_GROUPS)));
 		onLeaveAddTo.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_ADD_TO_GROUPS)));
 		onLeaveRemoveFrom
-				.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_REMOVE_FROM_GROUPS)));
+				.addAll(readIntListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_REMOVE_FROM_GROUPS)));
 
 		onJoinAddTo = Collections.unmodifiableList(onJoinAddTo);
 		onJoinRemoveFrom = Collections.unmodifiableList(onJoinRemoveFrom);
@@ -190,6 +191,14 @@ public class Config implements LoadConfiguration {
 		onLeaveRemoveFrom = Collections.unmodifiableList(onLeaveRemoveFrom);
 
 		return true;
+	}
+
+	private List<Integer> readIntListWithAllOption(final @CheckForNull String str) {
+		final String ALL_OPTION = "all";
+		if (ALL_OPTION.equalsIgnoreCase(str)) {
+			return Collections.singletonList(-1);
+		}
+		return splitStringToIntList(str);
 	}
 
 	private List<Integer> splitStringToIntList(final @CheckForNull String str) {
