@@ -36,6 +36,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 	private Config config;
 	private OfficersCache officers;
 	private SyncTask syncTask;
+	private CheckGroupAssignmentsTask checkAssignmentsTask;
 	private RestHelper restHelper;
 
 	public @NonNull Logger getLog() {
@@ -60,6 +61,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 		restHelper = new RestHelper(config);
 		officers = new OfficersCache(this);
 		syncTask = new SyncTask(this);
+		checkAssignmentsTask = new CheckGroupAssignmentsTask(this);
 	}
 
 	public void handleOnBotConnect() {
@@ -73,6 +75,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 		log.info("Activated");
 		officers.start();
 		syncTask.start();
+		checkAssignmentsTask.start();
 	}
 
 	public void disable() {

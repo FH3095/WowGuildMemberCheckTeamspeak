@@ -1,12 +1,14 @@
 package eu._4fh.tsgroupguildsync;
 
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -56,7 +58,18 @@ public class Config implements LoadConfiguration {
 				null, true),
 
 		TS_ON_LEAVE_REMOVE_FROM_GROUPS("onLeave_RemoveFromGroups",
-				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true);
+				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true),
+
+		TS_LOG_CHECK_INTERVAL("tsLog_checkInterval",
+				"How often to check the server log for new group assignments in minutes.", "1", false),
+
+		TS_LOG_LINE_FORMAT("tsLog_lineFormat", "Pattern used to parse server group add from teamspeak log.",
+				"(?<date>\\S+ \\S+)\\.\\d+\\|.*client \\(id:(?<tuser>\\d+)\\) was added to servergroup '.*'\\(id:(?<tgroup>\\d+)\\) by client '.*'\\(id:(?<suser>\\d+)\\)",
+				false),
+
+		TS_LOG_DATE_PATTERN("tsLog_datePattern",
+				"Pattern used to parse date from teamspeak log. Needs to be the format of the teamspeak logs.",
+				"yyyy-MM-dd HH:mm:ss", false);
 
 		public final @Nonnull String key;
 		public final @Nonnull String help;
@@ -97,6 +110,9 @@ public class Config implements LoadConfiguration {
 	private @NonNull List<Integer> onJoinRemoveFrom;
 	private @NonNull List<Integer> onLeaveAddTo;
 	private @NonNull List<Integer> onLeaveRemoveFrom;
+	private long tsLogCheckInterval;
+	private SimpleDateFormat tsLogDateFormat;
+	private Pattern tsLogServerGroupAddPattern;
 
 	public Config(final @NonNull SyncPlugin plugin, final @NonNull String prefix) {
 		this.plugin = plugin;
@@ -190,6 +206,11 @@ public class Config implements LoadConfiguration {
 		onLeaveAddTo = Collections.unmodifiableList(onLeaveAddTo);
 		onLeaveRemoveFrom = Collections.unmodifiableList(onLeaveRemoveFrom);
 
+		tsLogCheckInterval = readConfigInt(config, ConfigKeys.TS_LOG_CHECK_INTERVAL, 1);
+		tsLogDateFormat = new SimpleDateFormat(readConfigStr(config, ConfigKeys.TS_LOG_DATE_PATTERN));
+		tsLogServerGroupAddPattern = Pattern.compile(readConfigStr(config, ConfigKeys.TS_LOG_LINE_FORMAT),
+				Pattern.UNIX_LINES);
+
 		return true;
 	}
 
@@ -280,5 +301,17 @@ public class Config implements LoadConfiguration {
 
 	public final @Nonnull String getWebserviceAfterAuthRedirectTo() {
 		return redirectAfterAuthTo;
+	}
+
+	public final long getTsLogCheckInterval() {
+		return tsLogCheckInterval;
+	}
+
+	public final SimpleDateFormat getTsLogDateFormat() {
+		return tsLogDateFormat;
+	}
+
+	public final Pattern getTsLogServerGroupAddPattern() {
+		return tsLogServerGroupAddPattern;
 	}
 }

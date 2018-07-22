@@ -157,9 +157,6 @@ public class SyncTask {
 			final List<Integer> addToGroups = remove ? config.getOnLeaveAddTo() : config.getOnJoinAddTo();
 			final List<Integer> removeFromGroups = remove ? config.getOnLeaveRemoveFrom()
 					: config.getOnJoinRemoveFrom();
-			for (int groupId : addToGroups) {
-				doUserGroupChange(groupId, userId, false, false);
-			}
 			if (removeFromGroups.contains(-1)) {
 				Vector<HashMap<String, String>> groups = plugin.getQuery()
 						.getList(JTS3ServerQuery.LISTMODE_SERVERGROUPSBYCLIENTID, "cldbid=" + userId);
@@ -170,6 +167,9 @@ public class SyncTask {
 				for (int groupId : removeFromGroups) {
 					doUserGroupChange(groupId, userId, true, false);
 				}
+			}
+			for (int groupId : addToGroups) {
+				doUserGroupChange(groupId, userId, false, false);
 			}
 		}
 
