@@ -2,6 +2,7 @@ package eu._4fh.tsgroupguildsync.commands;
 
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Calendar;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -66,7 +67,7 @@ public class AddCommand implements AbstractCommand {
 		}
 
 		final @Nonnull WowCharacter character = new WowCharacter(commandAndParameters.get(2),
-				commandAndParameters.get(3));
+				commandAndParameters.get(3), Short.MAX_VALUE, Calendar.getInstance());
 
 		UriBuilder wsUri = plugin.getRestHelper().createUri("chars", "add").queryParam("remoteAccountId", userDbId);
 		try {

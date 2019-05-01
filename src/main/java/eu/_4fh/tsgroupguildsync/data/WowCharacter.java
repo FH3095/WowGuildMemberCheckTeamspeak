@@ -1,5 +1,6 @@
 package eu._4fh.tsgroupguildsync.data;
 
+import java.util.Calendar;
 import java.util.Objects;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -10,12 +11,18 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 public class WowCharacter {
 	private @NonNull String name;
 	private @NonNull String server;
+	private @NonNull int rank;
+	private @NonNull Calendar addedDate;
 
-	public WowCharacter(@NonNull String name, @NonNull String server) {
+	public WowCharacter(final @NonNull String name, final @NonNull String server, final @NonNull int rank,
+			final @NonNull Calendar addedDate) {
 		Objects.requireNonNull(name);
 		Objects.requireNonNull(server);
+		Objects.requireNonNull(addedDate);
 		this.name = name;
 		this.server = server;
+		this.rank = rank;
+		this.addedDate = (Calendar) addedDate.clone();
 	}
 
 	// For JAX-RS
@@ -23,6 +30,8 @@ public class WowCharacter {
 	private WowCharacter() {
 		name = "invalid";
 		server = "invalid";
+		rank = Short.MAX_VALUE;
+		addedDate = Calendar.getInstance();
 	}
 
 	public @NonNull String getName() {
@@ -31,6 +40,14 @@ public class WowCharacter {
 
 	public @NonNull String getServer() {
 		return server;
+	}
+
+	public @NonNull int getRank() {
+		return rank;
+	}
+
+	public @NonNull Calendar getAddedDate() {
+		return (Calendar) addedDate.clone();
 	}
 
 	@Override

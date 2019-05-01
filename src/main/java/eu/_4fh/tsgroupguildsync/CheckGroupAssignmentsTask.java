@@ -61,6 +61,8 @@ public class CheckGroupAssignmentsTask {
 
 		Date date = plugin.getConfig().getTsLogDateFormat().parse(dateStr);
 		if (lastCheckedDate != null && (lastCheckedDate.after(date) || lastCheckedDate.equals(date))) {
+			plugin.getLog()
+					.debug("Not checking line, because it is before " + lastCheckedDate.toString() + ". Line:" + line);
 			return;
 		}
 		lastCheckedDate = date;
