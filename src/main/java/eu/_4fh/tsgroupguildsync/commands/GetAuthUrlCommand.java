@@ -3,15 +3,16 @@ package eu._4fh.tsgroupguildsync.commands;
 import java.util.List;
 
 import javax.annotation.Nonnull;
-import javax.ws.rs.core.UriBuilder;
 
-import eu._4fh.tsgroupguildsync.Config;
+import de.stefan1200.jts3serverquery.JTS3ServerQuery;
+import de.stefan1200.jts3serverquery.TS3ServerQueryException;
 import eu._4fh.tsgroupguildsync.SyncPlugin;
+import eu._4fh.tsgroupguildsync.rest.RestHelper;
 
 public class GetAuthUrlCommand implements AbstractCommand {
 	@Override
 	public @Nonnull String getCommandSyntax() {
-		return "GetAuthUrl <User-DB-Id>";
+		return "GetAuthUrl [User-DB-Id]";
 	}
 
 	@Override
@@ -27,26 +28,35 @@ public class GetAuthUrlCommand implements AbstractCommand {
 	@Override
 	public void executeCommand(final @Nonnull int senderId, final @Nonnull List<String> commandAndParameters,
 			final @Nonnull SyncPlugin plugin) {
-		if (commandAndParameters.size() < 2) {
-			plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId, "Missing User-Db-Id");
-			return;
-		}
-		String userDbIdStr = commandAndParameters.get(1);
-		int userDbId;
 		try {
-			userDbId = Integer.parseInt(userDbIdStr);
-		} catch (NumberFormatException e) {
+			final RestHelper restHelper = new RestHelper(plugin.getConfig());
+			final long senderDbId = Long
+					.parseLong(plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("cldbid"));
+
+			if (commandAndParameters.size() > 2) {
+				plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
+						"Too many parameters");
+				return;
+			}
+
+			final long userDbId;
+			if (commandAndParameters.size() == 2) {
+				if (!restHelper.isOfficer(senderDbId)) {
+					plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
+							"You are not an officer. Access denied.");
+					return;
+				} else {
+					userDbId = Long.parseLong(commandAndParameters.get(1));
+				}
+			} else {
+				userDbId = senderDbId;
+			}
+
 			plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
-					"User-DB-Id is not a number");
-			return;
+					"URL: [URL]" + restHelper.getAuthStartUrl(userDbId).toASCIIString() + "[/URL]");
+		} catch (TS3ServerQueryException e) {
+			plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
+					"Error: " + e.getMessage());
 		}
-		final Config config = plugin.getConfig();
-		UriBuilder uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("rest/auth/start")
-				.queryParam("guildId", config.getGuildId()).queryParam("systemName", config.getWebserviceSystemName())
-				.queryParam("remoteAccountId", userDbId)
-				.queryParam("redirectTo", config.getWebserviceAfterAuthRedirectTo())
-				.queryParam("mac", plugin.getRestHelper().calcMac(userDbId));
-		plugin.getMod().sendMessageToClient(config.getPrefix(), "chat", senderId,
-				"URL: [URL]" + uri.build().toASCIIString() + "[/URL]");
 	}
 }

@@ -20,10 +20,9 @@ import de.stefan1200.jts3serverquery.JTS3ServerQuery;
 import de.stefan1200.util.ArrangedPropertiesWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
-import eu._4fh.tsgroupguildsync.commands.AddCommand;
 import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
 import eu._4fh.tsgroupguildsync.commands.GetAuthUrlCommand;
-import eu._4fh.tsgroupguildsync.rest.RestHelper;
+import eu._4fh.tsgroupguildsync.sync.SyncTask;
 
 public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfiguration {
 
@@ -32,12 +31,9 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 
 	private Logger log = new Logger();
 	private List<AbstractCommand> commands = Collections
-			.unmodifiableList(Arrays.asList(new GetAuthUrlCommand(), new AddCommand(), new ForceRefreshCommand()));
+			.unmodifiableList(Arrays.asList(new GetAuthUrlCommand(), new ForceRefreshCommand()));
 	private Config config;
-	private OfficersCache officers;
 	private SyncTask syncTask;
-	private CheckGroupAssignmentsTask checkAssignmentsTask;
-	private RestHelper restHelper;
 
 	public @NonNull Logger getLog() {
 		return log;
@@ -58,10 +54,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 		mod = modClass;
 		this.query = queryLib;
 		config = new Config(this, prefix);
-		restHelper = new RestHelper(config);
-		officers = new OfficersCache(this);
 		syncTask = new SyncTask(this);
-		checkAssignmentsTask = new CheckGroupAssignmentsTask(this);
 	}
 
 	public void handleOnBotConnect() {
@@ -73,9 +66,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 	public void activate() {
 		assertInitialized();
 		log.info("Activated");
-		officers.start();
 		syncTask.start();
-		checkAssignmentsTask.start();
 	}
 
 	public void disable() {
@@ -102,10 +93,6 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 
 	public String[] botChatCommandList(HashMap<String, String> eventInfo, boolean isFullAdmin, boolean isAdmin) {
 		assertInitialized();
-		int senderDbId = mod.getClientDBID(eventInfo.get("invokeruid"));
-		if (!officers.getOfficersDbId().contains(senderDbId)) {
-			return new String[] {};
-		}
 		List<String> helpList = new ArrayList<>();
 		for (AbstractCommand command : commands) {
 			helpList.add(command.getCommandSyntax());
@@ -126,11 +113,6 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 			boolean isAdmin) {
 		assertInitialized();
 		log.info("HandleChatCommand " + msg);
-
-		int senderDbId = mod.getClientDBID(eventInfo.get("invokeruid"));
-		if (!officers.getOfficersDbId().contains(senderDbId)) {
-			return false;
-		}
 
 		List<String> commandSplitted = new ArrayList<>(Arrays.asList(msg.split(" ")));
 		for (ListIterator<String> it = commandSplitted.listIterator(); it.hasNext();) {
@@ -211,12 +193,5 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 			throw new RuntimeException("Cant get syncTask yet");
 		}
 		return syncTask;
-	}
-
-	public @Nonnull RestHelper getRestHelper() {
-		if (restHelper == null) {
-			throw new RuntimeException("Cant get restHelper yet");
-		}
-		return restHelper;
 	}
 }

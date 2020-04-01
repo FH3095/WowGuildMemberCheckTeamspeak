@@ -8,6 +8,6 @@ public class Util {
 	}
 
 	public static String join(Collection<? extends Object> collection, String delimiter) {
-		return collection.stream().map(Object::toString).collect(Collectors.joining(delimiter));
+		return collection.stream().map(String::valueOf).collect(Collectors.joining(delimiter));
 	}
 }

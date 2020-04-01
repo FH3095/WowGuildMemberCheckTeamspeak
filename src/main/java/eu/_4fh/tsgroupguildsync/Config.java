@@ -1,17 +1,18 @@
 package eu._4fh.tsgroupguildsync;
 
 import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.security.Key;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.crypto.spec.SecretKeySpec;
 
 import de.stefan1200.jts3servermod.BotConfigurationException;
 import de.stefan1200.jts3servermod.interfaces.LoadConfiguration;
@@ -22,8 +23,6 @@ public class Config implements LoadConfiguration {
 	private static enum ConfigKeys {
 		WEBSERVICE_URL("webserviceUrl", "URL to the webservice, for example https://my.server.com/guildsync/."),
 
-		WEBSERVICE_API_KEY("webserviceApiKey", "API key for the webservice."),
-
 		WEBSERVICE_MAC_KEY("webserviceMacKey", "MAC key for the webservice."),
 
 		WEBSERVICE_SYSTEM_NAME("webserviceSystemName", "System name for the webservice.", "Voice"),
@@ -32,19 +31,11 @@ public class Config implements LoadConfiguration {
 				"URL to redirect the user to after he is authed."),
 
 		WEBSERVICE_CHECK_INTERVAL("checkInterval",
-				"Interval to check the webservice (in minutes). Use 0 to disable the plugin.", "60"),
-
-		WEBSERVICE_FULL_CHECK_INTERVAL("fullCheckInterval",
-				"Interval to check group completly instead of only changed. Has to be a multiple of checkInterval.",
-				String.valueOf(60 * 12)),
-
-		WEBSERVICE_GUILD_ID("guildId", "Id of the guild on the webservice-side."),
-
-		TS_OFFICER_GROUP("officerGroup", "The guild officer user group as id number."),
+				"Interval to check the webservice (in minutes). Use 0 to disable the plugin.", "240"),
 
 		TS_MAIN_GROUP("mainGroup", "The main TS user group for the guild as id number.\n"
-				+ "If someone is not in this group but is in the guild according to the webservice he will be added to this group and onAdd* will be triggered.\n"
-				+ "If someone is in this group but not in the guild according to the webservice he will be removed from this group and onRemove will be triggered."),
+				+ "If someone is not in this group but is in the guild according to the webservice he will be added to this group and onJoin* will be triggered.\n"
+				+ "If someone is in this group but not in the guild according to the webservice he will be removed from this group and onLeave will be triggered."),
 
 		TS_ON_JOIN_ADD_TO_GROUPS("onJoin_AddToGroups",
 				"When a user was added to the guild, add this user the this groups. Give group id numbers comma seperated. Optional.",
@@ -58,18 +49,7 @@ public class Config implements LoadConfiguration {
 				null, true),
 
 		TS_ON_LEAVE_REMOVE_FROM_GROUPS("onLeave_RemoveFromGroups",
-				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true),
-
-		TS_LOG_CHECK_INTERVAL("tsLog_checkInterval",
-				"How often to check the server log for new group assignments in minutes.", "1", false),
-
-		TS_LOG_LINE_FORMAT("tsLog_lineFormat", "Pattern used to parse server group add from teamspeak log.",
-				"(?<date>\\S+ \\S+)\\.\\d+\\|.*client \\(id:(?<tuser>\\d+)\\) was added to servergroup '.*'\\(id:(?<tgroup>\\d+)\\) by client '.*'\\(id:(?<suser>\\d+)\\)",
-				false),
-
-		TS_LOG_DATE_PATTERN("tsLog_datePattern",
-				"Pattern used to parse date from teamspeak log. Needs to be the format of the teamspeak logs.",
-				"yyyy-MM-dd HH:mm:ss", false);
+				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true);
 
 		public final @Nonnull String key;
 		public final @Nonnull String help;
@@ -97,30 +77,23 @@ public class Config implements LoadConfiguration {
 	private final @NonNull SyncPlugin plugin;
 	private final @NonNull String prefix;
 	private URI webserviceUrl;
-	private String webserviceApiKey;
 	private byte[] webserviceMacKey;
 	private String webserviceSystemName;
 	private String redirectAfterAuthTo;
 	private int checkInterval;
-	private int fullCheckInterval;
-	private int guildId;
 	private int mainGroup;
-	private int officerGroup;
-	private @NonNull List<Integer> onJoinAddTo;
-	private @NonNull List<Integer> onJoinRemoveFrom;
-	private @NonNull List<Integer> onLeaveAddTo;
-	private @NonNull List<Integer> onLeaveRemoveFrom;
-	private long tsLogCheckInterval;
-	private SimpleDateFormat tsLogDateFormat;
-	private Pattern tsLogServerGroupAddPattern;
+	private @NonNull Set<Long> onJoinAddTo;
+	private @NonNull Set<Long> onJoinRemoveFrom;
+	private @NonNull Set<Long> onLeaveAddTo;
+	private @NonNull Set<Long> onLeaveRemoveFrom;
 
 	public Config(final @NonNull SyncPlugin plugin, final @NonNull String prefix) {
 		this.plugin = plugin;
 		this.prefix = prefix;
-		onJoinAddTo = new ArrayList<>();
-		onJoinRemoveFrom = new ArrayList<>();
-		onLeaveAddTo = new ArrayList<>();
-		onLeaveRemoveFrom = new ArrayList<>();
+		onJoinAddTo = new HashSet<>();
+		onJoinRemoveFrom = new HashSet<>();
+		onLeaveAddTo = new HashSet<>();
+		onLeaveRemoveFrom = new HashSet<>();
 	}
 
 	@Override
@@ -169,71 +142,55 @@ public class Config implements LoadConfiguration {
 			return false;
 		}
 
-		final int fullCheckIntervalTime = readConfigInt(config, ConfigKeys.WEBSERVICE_FULL_CHECK_INTERVAL, 1);
-		if (fullCheckIntervalTime % checkInterval != 0) {
-			throw new BotConfigurationException(
-					"fullCheckInterval has to be a multiple of checkInterval, but fullCheckInterval is "
-							+ fullCheckIntervalTime + " and checkInterval is " + checkInterval);
-		}
-		fullCheckInterval = fullCheckIntervalTime / checkInterval;
-
 		webserviceUrl = URI.create(readConfigStr(config, ConfigKeys.WEBSERVICE_URL));
 		redirectAfterAuthTo = readConfigStr(config, ConfigKeys.WEBSERVICE_AFTER_AUTH_REDIRECT_TO);
 
-		webserviceApiKey = readConfigStr(config, ConfigKeys.WEBSERVICE_API_KEY);
 		webserviceMacKey = Base64.getDecoder().decode(readConfigStr(config, ConfigKeys.WEBSERVICE_MAC_KEY));
 		webserviceSystemName = readConfigStr(config, ConfigKeys.WEBSERVICE_SYSTEM_NAME);
 
-		guildId = readConfigInt(config, ConfigKeys.WEBSERVICE_GUILD_ID, 1);
-
 		mainGroup = readConfigInt(config, ConfigKeys.TS_MAIN_GROUP, 1);
-		officerGroup = readConfigInt(config, ConfigKeys.TS_OFFICER_GROUP, 1);
 
-		onJoinAddTo = new ArrayList<>();
-		onJoinRemoveFrom = new ArrayList<>();
-		onLeaveAddTo = new ArrayList<>();
-		onLeaveRemoveFrom = new ArrayList<>();
+		onJoinAddTo = new HashSet<>();
+		onJoinRemoveFrom = new HashSet<>();
+		onLeaveAddTo = new HashSet<>();
+		onLeaveRemoveFrom = new HashSet<>();
 
-		onJoinAddTo.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_JOIN_ADD_TO_GROUPS)));
+		onJoinAddTo.addAll(splitStringToLongList(readConfigStr(config, ConfigKeys.TS_ON_JOIN_ADD_TO_GROUPS)));
 		onJoinRemoveFrom
-				.addAll(readIntListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_JOIN_REMOVE_FROM_GROUPS)));
-		onLeaveAddTo.addAll(splitStringToIntList(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_ADD_TO_GROUPS)));
+				.addAll(readLongListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_JOIN_REMOVE_FROM_GROUPS)));
+		onLeaveAddTo.addAll(splitStringToLongList(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_ADD_TO_GROUPS)));
 		onLeaveRemoveFrom
-				.addAll(readIntListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_REMOVE_FROM_GROUPS)));
+				.addAll(readLongListWithAllOption(readConfigStr(config, ConfigKeys.TS_ON_LEAVE_REMOVE_FROM_GROUPS)));
 
-		onJoinAddTo = Collections.unmodifiableList(onJoinAddTo);
-		onJoinRemoveFrom = Collections.unmodifiableList(onJoinRemoveFrom);
-		onLeaveAddTo = Collections.unmodifiableList(onLeaveAddTo);
-		onLeaveRemoveFrom = Collections.unmodifiableList(onLeaveRemoveFrom);
-
-		tsLogCheckInterval = readConfigInt(config, ConfigKeys.TS_LOG_CHECK_INTERVAL, 1);
-		tsLogDateFormat = new SimpleDateFormat(readConfigStr(config, ConfigKeys.TS_LOG_DATE_PATTERN));
-		tsLogServerGroupAddPattern = Pattern.compile(readConfigStr(config, ConfigKeys.TS_LOG_LINE_FORMAT),
-				Pattern.UNIX_LINES);
+		onJoinAddTo = Collections.unmodifiableSet(onJoinAddTo);
+		onJoinRemoveFrom = Collections.unmodifiableSet(onJoinRemoveFrom);
+		onLeaveAddTo = Collections.unmodifiableSet(onLeaveAddTo);
+		onLeaveRemoveFrom = Collections.unmodifiableSet(onLeaveRemoveFrom);
 
 		return true;
 	}
 
-	private List<Integer> readIntListWithAllOption(final @CheckForNull String str) {
+	private List<Long> readLongListWithAllOption(final @CheckForNull String str) {
 		final String ALL_OPTION = "all";
 		if (ALL_OPTION.equalsIgnoreCase(str)) {
-			return Collections.singletonList(-1);
+			return Collections.singletonList(-1L);
 		}
-		return splitStringToIntList(str);
+		return splitStringToLongList(str);
 	}
 
-	private List<Integer> splitStringToIntList(final @CheckForNull String str) {
-		List<Integer> result = new LinkedList<>();
+	private List<Long> splitStringToLongList(@CheckForNull String str) {
+		List<Long> result = new LinkedList<>();
 		if (str == null) {
 			return result;
 		}
+		str = str.replace(" ", "");
 		for (String value : str.split(",")) {
 			value = value.trim();
 			if (value.isEmpty()) {
 				continue;
 			}
 
-			result.add(Integer.parseInt(value));
+			result.add(Long.parseLong(value));
 		}
 		return result;
 	}
@@ -255,63 +212,39 @@ public class Config implements LoadConfiguration {
 		return checkInterval;
 	}
 
-	public final @Nonnull int getFullCheckInterval() {
-		return fullCheckInterval;
-	}
-
-	public final @Nonnull int getGuildId() {
-		return guildId;
-	}
-
 	public final @Nonnull int getMainGroup() {
 		return mainGroup;
 	}
 
-	public final @Nonnull int getOfficerGroup() {
-		return officerGroup;
-	}
-
-	public final @Nonnull List<Integer> getOnJoinAddTo() {
+	public final @Nonnull Set<Long> getOnJoinAddTo() {
 		return onJoinAddTo;
 	}
 
-	public final @Nonnull List<Integer> getOnJoinRemoveFrom() {
+	public final @Nonnull Set<Long> getOnJoinRemoveFrom() {
 		return onJoinRemoveFrom;
 	}
 
-	public final @Nonnull List<Integer> getOnLeaveAddTo() {
+	public final @Nonnull Set<Long> getOnLeaveAddTo() {
 		return onLeaveAddTo;
 	}
 
-	public final @Nonnull List<Integer> getOnLeaveRemoveFrom() {
+	public final @Nonnull Set<Long> getOnLeaveRemoveFrom() {
 		return onLeaveRemoveFrom;
-	}
-
-	public final @Nonnull String getWebserviceApiKey() {
-		return webserviceApiKey;
 	}
 
 	public final @Nonnull String getWebserviceSystemName() {
 		return webserviceSystemName;
 	}
 
-	public final @Nonnull byte[] getWebserviceMacKey() {
-		return webserviceMacKey.clone();
+	public final @Nonnull Key getWebserviceMacKey() {
+		return new SecretKeySpec(webserviceMacKey, macAlgorithm());
 	}
 
 	public final @Nonnull String getWebserviceAfterAuthRedirectTo() {
 		return redirectAfterAuthTo;
 	}
 
-	public final long getTsLogCheckInterval() {
-		return tsLogCheckInterval;
-	}
-
-	public final SimpleDateFormat getTsLogDateFormat() {
-		return tsLogDateFormat;
-	}
-
-	public final Pattern getTsLogServerGroupAddPattern() {
-		return tsLogServerGroupAddPattern;
+	public String macAlgorithm() {
+		return "HmacSHA256";
 	}
 }
