@@ -39,7 +39,7 @@ public class ForceRefreshCommand implements AbstractCommand {
 				return;
 			}
 
-			new RestSync(plugin.getQuery(), plugin.getLog(), plugin.getConfig()).sync();
+			new RestSync(plugin.getQuery(), plugin.getLog(), plugin.getConfig()).syncAll();
 		} catch (TS3ServerQueryException e) {
 			plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
 					"Cant sync: " + e.getMessage());

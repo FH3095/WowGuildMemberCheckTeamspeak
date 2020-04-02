@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -22,7 +25,13 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
 import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
 import eu._4fh.tsgroupguildsync.commands.GetAuthUrlCommand;
+import eu._4fh.tsgroupguildsync.sync.RestSync;
 import eu._4fh.tsgroupguildsync.sync.SyncTask;
+import io.undertow.Undertow;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.util.BadRequestException;
+import io.undertow.util.Headers;
 
 public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfiguration {
 
@@ -34,6 +43,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 			.unmodifiableList(Arrays.asList(new GetAuthUrlCommand(), new ForceRefreshCommand()));
 	private Config config;
 	private SyncTask syncTask;
+	private Undertow httpServer;
 
 	public @NonNull Logger getLog() {
 		return log;
@@ -67,10 +77,15 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 		assertInitialized();
 		log.info("Activated");
 		syncTask.start();
+		httpServer = Undertow.builder().addHttpListener(config.httpServerPort(), config.httpServerAddress())
+				.setHandler(new HttpHandlerImpl()).build();
+		httpServer.start();
 	}
 
 	public void disable() {
 		assertInitialized();
+		httpServer.stop();
+		httpServer = null;
 		log.info("Disabled");
 	}
 
@@ -193,5 +208,44 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 			throw new RuntimeException("Cant get syncTask yet");
 		}
 		return syncTask;
+	}
+
+	private class HttpHandlerImpl implements HttpHandler {
+		@Override
+		public void handleRequest(HttpServerExchange exchange) throws Exception {
+			if (!exchange.getRequestPath().endsWith("/auth/finished")) {
+				exchange.setStatusCode(404);
+				exchange.getRequestHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+				exchange.getResponseSender().send("NOT FOUND. Path must end with /auth/finished");
+				return;
+			}
+
+			final Map<String, Deque<String>> queryParams = exchange.getQueryParameters();
+
+			final Deque<String> paramError = queryParams.getOrDefault("error", new LinkedList<>());
+			final Deque<String> paramErrorDesc = queryParams.getOrDefault("errorDescription", new LinkedList<>());
+			if (paramError.size() > 0 || paramErrorDesc.size() > 0) {
+				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+				exchange.getResponseSender().send("Authentication failed.\n\nError: " + Util.join(paramError, " ")
+						+ "\n\nError-Description: " + Util.join(paramErrorDesc, " "));
+			}
+
+			final Deque<String> paramRemoteId = queryParams.getOrDefault("remoteId", new LinkedList<>());
+			if (paramRemoteId.size() != 1) {
+				throw new BadRequestException("Parameter remoteId is either given more than once or not at all");
+			}
+			final long remoteId = Long.parseLong(paramRemoteId.getFirst());
+
+			final boolean added = new RestSync(getQuery(), getLog(), getConfig()).syncSingle(remoteId);
+			if (!added) {
+				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+				exchange.getResponseSender().send("Authentication successfull, "
+						+ "but either you were already authenticated or according to the blizzard api you are not in the guild. "
+						+ "Probably try again later.");
+			} else {
+				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+				exchange.getResponseSender().send("Authentication successfull.");
+			}
+		}
 	}
 }

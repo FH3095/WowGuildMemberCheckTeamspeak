@@ -31,38 +31,53 @@ public class RestSync {
 
 	public RestSync(final JTS3ServerQuery query, final Logger log, final @Nonnull Config config)
 			throws TS3ServerQueryException {
-		toAdd = new HashSet<>();
-		toDel = new HashSet<>();
-		this.query = query;
-		this.log = log;
-		this.config = config;
-		restHelper = new RestHelper(config);
-
-		final List<HashMap<String, String>> mainGroupClients = query
-				.getList(JTS3ServerQuery.LISTMODE_SERVERGROUPCLIENTLIST, "sgid=" + config.getMainGroup());
-		currentGroupMembers = Collections.unmodifiableSet(
-				mainGroupClients.stream().map(map -> Long.parseLong(map.get("cldbid"))).collect(Collectors.toSet()));
-		restMembers = Collections.unmodifiableSet(new HashSet<>(restHelper.getAllAccountIds()));
-	}
-
-	public void sync() throws TS3ServerQueryException {
 		synchronized (syncObject) {
-			doSync();
+			toAdd = new HashSet<>();
+			toDel = new HashSet<>();
+			this.query = query;
+			this.log = log;
+			this.config = config;
+			restHelper = new RestHelper(config);
+
+			final List<HashMap<String, String>> mainGroupClients = query
+					.getList(JTS3ServerQuery.LISTMODE_SERVERGROUPCLIENTLIST, "sgid=" + config.getMainGroup());
+			currentGroupMembers = Collections.unmodifiableSet(mainGroupClients.stream()
+					.map(map -> Long.parseLong(map.get("cldbid"))).collect(Collectors.toSet()));
+			restMembers = Collections.unmodifiableSet(new HashSet<>(restHelper.getAllAccountIds()));
 		}
 	}
 
-	private void doSync() throws TS3ServerQueryException {
-		final Set<Long> newMembers = new HashSet<>(restMembers);
-		newMembers.removeAll(currentGroupMembers);
-		final Set<Long> noLongerMembers = new HashSet<>(currentGroupMembers);
-		noLongerMembers.removeAll(restMembers);
+	public void syncAll() throws TS3ServerQueryException {
+		synchronized (syncObject) {
+			final Set<Long> newMembers = new HashSet<>(restMembers);
+			newMembers.removeAll(currentGroupMembers);
+			final Set<Long> noLongerMembers = new HashSet<>(currentGroupMembers);
+			noLongerMembers.removeAll(restMembers);
 
-		toAdd.addAll(newMembers);
-		toDel.addAll(noLongerMembers);
+			toAdd.addAll(newMembers);
+			toDel.addAll(noLongerMembers);
 
-		log.info("FullSync: Adding users " + Util.join(toAdd, ",") + " and removing " + Util.join(toDel, ","));
+			log.info("FullSync: Adding users " + Util.join(toAdd, ",") + " and removing " + Util.join(toDel, ","));
 
-		doChanges();
+			doChanges();
+		}
+	}
+
+	public boolean syncSingle(final long accountId) throws TS3ServerQueryException {
+		synchronized (syncObject) {
+			if (currentGroupMembers.contains(accountId) || !restMembers.contains(accountId)) {
+				return false;
+			}
+
+			toAdd.add(accountId);
+			toDel.clear();
+
+			log.info("SingleSync: Adding users " + Util.join(toAdd, ",") + " and removing " + Util.join(toDel, ","));
+
+			doChanges();
+
+			return true;
+		}
 	}
 
 	private void doChanges() throws TS3ServerQueryException {

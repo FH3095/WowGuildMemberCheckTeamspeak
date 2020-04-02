@@ -49,7 +49,11 @@ public class Config implements LoadConfiguration {
 				null, true),
 
 		TS_ON_LEAVE_REMOVE_FROM_GROUPS("onLeave_RemoveFromGroups",
-				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true);
+				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true),
+
+		HTTP_SERVER_ADDRESS("HttpServerAddress", "Address for the embedded http server", "localhost", false),
+
+		HTTP_SERVER_PORT("HttpServerPort", "Port for the embedded http server");
 
 		public final @Nonnull String key;
 		public final @Nonnull String help;
@@ -86,6 +90,8 @@ public class Config implements LoadConfiguration {
 	private @NonNull Set<Long> onJoinRemoveFrom;
 	private @NonNull Set<Long> onLeaveAddTo;
 	private @NonNull Set<Long> onLeaveRemoveFrom;
+	private String httpServerAddress;
+	private int httpServerPort;
 
 	public Config(final @NonNull SyncPlugin plugin, final @NonNull String prefix) {
 		this.plugin = plugin;
@@ -167,6 +173,9 @@ public class Config implements LoadConfiguration {
 		onLeaveAddTo = Collections.unmodifiableSet(onLeaveAddTo);
 		onLeaveRemoveFrom = Collections.unmodifiableSet(onLeaveRemoveFrom);
 
+		httpServerAddress = readConfigStr(config, ConfigKeys.HTTP_SERVER_ADDRESS);
+		httpServerPort = readConfigInt(config, ConfigKeys.HTTP_SERVER_PORT, 1);
+
 		return true;
 	}
 
@@ -246,5 +255,13 @@ public class Config implements LoadConfiguration {
 
 	public String macAlgorithm() {
 		return "HmacSHA256";
+	}
+
+	public String httpServerAddress() {
+		return httpServerAddress;
+	}
+
+	public int httpServerPort() {
+		return httpServerPort;
 	}
 }
