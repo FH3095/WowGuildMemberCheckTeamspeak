@@ -1,5 +1,7 @@
 package eu._4fh.tsgroupguildsync;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -20,6 +22,7 @@ import de.stefan1200.jts3servermod.interfaces.HandleTS3Events;
 import de.stefan1200.jts3servermod.interfaces.JTS3ServerMod_Interface;
 import de.stefan1200.jts3servermod.interfaces.LoadConfiguration;
 import de.stefan1200.jts3serverquery.JTS3ServerQuery;
+import de.stefan1200.jts3serverquery.TS3ServerQueryException;
 import de.stefan1200.util.ArrangedPropertiesWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
@@ -30,7 +33,6 @@ import eu._4fh.tsgroupguildsync.sync.SyncTask;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.BadRequestException;
 import io.undertow.util.Headers;
 
 public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfiguration {
@@ -212,40 +214,67 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 
 	private class HttpHandlerImpl implements HttpHandler {
 		@Override
-		public void handleRequest(HttpServerExchange exchange) throws Exception {
-			if (!exchange.getRequestPath().endsWith("/auth/finished")) {
-				exchange.setStatusCode(404);
-				exchange.getRequestHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-				exchange.getResponseSender().send("NOT FOUND. Path must end with /auth/finished");
+		public void handleRequest(HttpServerExchange exchange) {
+			if (exchange.isInIoThread()) {
+				exchange.dispatch(this);
 				return;
 			}
 
+			exchange.startBlocking();
+			try {
+				if (exchange.getRequestPath().endsWith("/auth/finished")) {
+					handleAuthFinished(exchange);
+				} else {
+					outputError(exchange, 404, "NOT FOUND. Path must end with /auth/finished");
+				}
+			} catch (Exception e) {
+				final StringWriter errorMsg = new StringWriter();
+				final PrintWriter printWriter = new PrintWriter(errorMsg);
+				e.printStackTrace(printWriter);
+				printWriter.flush();
+				outputError(exchange, 500, errorMsg.toString());
+			} finally {
+				exchange.endExchange();
+			}
+		}
+
+		private void handleAuthFinished(final HttpServerExchange exchange) throws TS3ServerQueryException {
 			final Map<String, Deque<String>> queryParams = exchange.getQueryParameters();
 
 			final Deque<String> paramError = queryParams.getOrDefault("error", new LinkedList<>());
 			final Deque<String> paramErrorDesc = queryParams.getOrDefault("errorDescription", new LinkedList<>());
 			if (paramError.size() > 0 || paramErrorDesc.size() > 0) {
-				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-				exchange.getResponseSender().send("Authentication failed.\n\nError: " + Util.join(paramError, " ")
+				outputText(exchange, "Authentication failed.\n\nError: " + Util.join(paramError, " ")
 						+ "\n\nError-Description: " + Util.join(paramErrorDesc, " "));
+				return;
 			}
 
 			final Deque<String> paramRemoteId = queryParams.getOrDefault("remoteId", new LinkedList<>());
 			if (paramRemoteId.size() != 1) {
-				throw new BadRequestException("Parameter remoteId is either given more than once or not at all");
+				outputError(exchange, 400, "Parameter remoteId is either given more than once or not at all");
+				return;
 			}
 			final long remoteId = Long.parseLong(paramRemoteId.getFirst());
 
 			final boolean added = new RestSync(getQuery(), getLog(), getConfig()).syncSingle(remoteId);
 			if (!added) {
-				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-				exchange.getResponseSender().send("Authentication successfull, "
+				outputText(exchange, "Authentication successfull, "
 						+ "but either you were already authenticated or according to the blizzard api you are not in the guild. "
 						+ "Probably try again later.");
 			} else {
-				exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
-				exchange.getResponseSender().send("Authentication successfull.");
+				outputText(exchange, "Authentication successfull.");
 			}
+		}
+
+		private void outputError(final HttpServerExchange exchange, final int statusCode, final String text) {
+			exchange.setStatusCode(statusCode);
+			exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+			exchange.getResponseSender().send(text);
+		}
+
+		private void outputText(final HttpServerExchange exchange, final String text) {
+			exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+			exchange.getResponseSender().send(text);
 		}
 	}
 }
