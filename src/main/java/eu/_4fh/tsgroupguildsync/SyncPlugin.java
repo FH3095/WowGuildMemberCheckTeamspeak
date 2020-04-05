@@ -27,7 +27,7 @@ import de.stefan1200.util.ArrangedPropertiesWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
 import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
-import eu._4fh.tsgroupguildsync.commands.GetAuthUrlCommand;
+import eu._4fh.tsgroupguildsync.commands.AuthMeCommand;
 import eu._4fh.tsgroupguildsync.sync.RestSync;
 import eu._4fh.tsgroupguildsync.sync.SyncTask;
 import io.undertow.Undertow;
@@ -42,7 +42,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 
 	private Logger log = new Logger();
 	private List<AbstractCommand> commands = Collections
-			.unmodifiableList(Arrays.asList(new GetAuthUrlCommand(), new ForceRefreshCommand()));
+			.unmodifiableList(Arrays.asList(new AuthMeCommand(), new ForceRefreshCommand()));
 	private Config config;
 	private SyncTask syncTask;
 	private Undertow httpServer;

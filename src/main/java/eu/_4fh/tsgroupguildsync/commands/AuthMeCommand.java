@@ -9,7 +9,7 @@ import de.stefan1200.jts3serverquery.TS3ServerQueryException;
 import eu._4fh.tsgroupguildsync.SyncPlugin;
 import eu._4fh.tsgroupguildsync.rest.RestHelper;
 
-public class GetAuthUrlCommand implements AbstractCommand {
+public class AuthMeCommand implements AbstractCommand {
 	@Override
 	public @Nonnull String getCommandSyntax() {
 		return "GetAuthUrl [User-DB-Id]";
@@ -22,7 +22,7 @@ public class GetAuthUrlCommand implements AbstractCommand {
 
 	@Override
 	public @Nonnull String getCommandStart() {
-		return "GetAuthUrl";
+		return "AuthMe";
 	}
 
 	@Override
