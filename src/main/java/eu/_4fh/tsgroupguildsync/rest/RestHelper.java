@@ -36,7 +36,7 @@ public class RestHelper {
 		final String systemName = config.getWebserviceSystemName();
 		final String strAccountId = String.valueOf(accountId);
 		final String redirectTo = config.getWebserviceAfterAuthRedirectTo();
-		final UriBuilder result = UriBuilder.fromUri(config.getWebserviceUrl()).path("rest/auth/start")
+		final UriBuilder result = UriBuilder.fromUri(config.getWebserviceUrl()).path("auth/start")
 				.queryParam("systemName", systemName).queryParam("remoteId", strAccountId)
 				.queryParam("redirectTo", redirectTo).queryParam("mac", calcMac(systemName, strAccountId, redirectTo));
 		return result.build();
@@ -44,7 +44,7 @@ public class RestHelper {
 
 	public @Nonnull List<Long> getAllAccountIds() {
 		final String systemName = config.getWebserviceSystemName();
-		final URI uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("rest/accounts/remoteIdsByRemoteSystem")
+		final URI uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("accounts/remoteIdsByRemoteSystem")
 				.queryParam("systemName", systemName).queryParam("mac", calcMac(systemName)).build();
 		final List<Long> result = createClient().target(uri).request(MediaType.APPLICATION_JSON)
 				.get(new GenericType<List<Long>>() {
@@ -55,7 +55,7 @@ public class RestHelper {
 	public boolean isOfficer(final long accountId) {
 		final String systemName = config.getWebserviceSystemName();
 		final String strAccountId = String.valueOf(accountId);
-		final URI uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("rest/accounts/isOfficer")
+		final URI uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("accounts/isOfficer")
 				.queryParam("systemName", systemName).queryParam("remoteId", strAccountId)
 				.queryParam("mac", calcMac(systemName, strAccountId)).build();
 		final Boolean result = createClient().target(uri).request(MediaType.APPLICATION_JSON)
