@@ -31,8 +31,8 @@ public class ForceRefreshCommand implements AbstractCommand {
 			final @Nonnull SyncPlugin plugin) {
 		final RestHelper restHelper = new RestHelper(plugin.getConfig());
 		try {
-			final long clientDbId = Long
-					.parseLong(plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("cldbid"));
+			final long clientDbId = Long.parseLong(
+					plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("client_database_id"));
 			if (!restHelper.isOfficer(clientDbId)) {
 				plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
 						"You are not an officer. Access denied.");

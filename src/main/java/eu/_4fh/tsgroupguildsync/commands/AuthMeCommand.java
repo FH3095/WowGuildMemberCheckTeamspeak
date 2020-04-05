@@ -12,7 +12,7 @@ import eu._4fh.tsgroupguildsync.rest.RestHelper;
 public class AuthMeCommand implements AbstractCommand {
 	@Override
 	public @Nonnull String getCommandSyntax() {
-		return "GetAuthUrl [User-DB-Id]";
+		return "AuthMe [User-DB-Id]";
 	}
 
 	@Override
@@ -30,8 +30,8 @@ public class AuthMeCommand implements AbstractCommand {
 			final @Nonnull SyncPlugin plugin) {
 		try {
 			final RestHelper restHelper = new RestHelper(plugin.getConfig());
-			final long senderDbId = Long
-					.parseLong(plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("cldbid"));
+			final long senderDbId = Long.parseLong(
+					plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("client_database_id"));
 
 			if (commandAndParameters.size() > 2) {
 				plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
