@@ -4,10 +4,8 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
-import de.stefan1200.jts3serverquery.JTS3ServerQuery;
 import de.stefan1200.jts3serverquery.TS3ServerQueryException;
 import eu._4fh.tsgroupguildsync.SyncPlugin;
-import eu._4fh.tsgroupguildsync.rest.RestHelper;
 import eu._4fh.tsgroupguildsync.sync.RestSync;
 
 public class ForceRefreshCommand implements AbstractCommand {
@@ -27,13 +25,10 @@ public class ForceRefreshCommand implements AbstractCommand {
 	}
 
 	@Override
-	public void executeCommand(final @Nonnull int senderId, final @Nonnull List<String> commandAndParameters,
-			final @Nonnull SyncPlugin plugin) {
-		final RestHelper restHelper = new RestHelper(plugin.getConfig());
+	public void executeCommand(final @Nonnull int senderId, final boolean isAdmin,
+			final @Nonnull List<String> commandAndParameters, final @Nonnull SyncPlugin plugin) {
 		try {
-			final long clientDbId = Long.parseLong(
-					plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("client_database_id"));
-			if (!restHelper.isOfficer(clientDbId)) {
+			if (!isAdmin) {
 				plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
 						"You are not an officer. Access denied.");
 				return;

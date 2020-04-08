@@ -26,12 +26,10 @@ public class AuthMeCommand implements AbstractCommand {
 	}
 
 	@Override
-	public void executeCommand(final @Nonnull int senderId, final @Nonnull List<String> commandAndParameters,
-			final @Nonnull SyncPlugin plugin) {
+	public void executeCommand(final @Nonnull int senderId, final boolean isAdmin,
+			final @Nonnull List<String> commandAndParameters, final @Nonnull SyncPlugin plugin) {
 		try {
 			final RestHelper restHelper = new RestHelper(plugin.getConfig());
-			final long senderDbId = Long.parseLong(
-					plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId).get("client_database_id"));
 
 			if (commandAndParameters.size() > 2) {
 				plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
@@ -41,15 +39,16 @@ public class AuthMeCommand implements AbstractCommand {
 
 			final long userDbId;
 			if (commandAndParameters.size() == 2) {
-				if (!restHelper.isOfficer(senderDbId)) {
+				if (!isAdmin) {
 					plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,
-							"You are not an officer. Access denied.");
+							"You are not an admin. Access denied.");
 					return;
 				} else {
 					userDbId = Long.parseLong(commandAndParameters.get(1));
 				}
 			} else {
-				userDbId = senderDbId;
+				userDbId = Long.parseLong(plugin.getQuery().getInfo(JTS3ServerQuery.INFOMODE_CLIENTINFO, senderId)
+						.get("client_database_id"));
 			}
 
 			plugin.getMod().sendMessageToClient(plugin.getConfig().getPrefix(), "chat", senderId,

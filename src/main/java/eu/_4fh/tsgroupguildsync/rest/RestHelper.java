@@ -52,18 +52,6 @@ public class RestHelper {
 		return result;
 	}
 
-	public boolean isOfficer(final long accountId) {
-		final String systemName = config.getWebserviceSystemName();
-		final String strAccountId = String.valueOf(accountId);
-		final URI uri = UriBuilder.fromUri(config.getWebserviceUrl()).path("accounts/isOfficer")
-				.queryParam("systemName", systemName).queryParam("remoteId", strAccountId)
-				.queryParam("mac", calcMac(systemName, strAccountId)).build();
-		final Boolean result = createClient().target(uri).request(MediaType.APPLICATION_JSON)
-				.get(new GenericType<Boolean>() {
-				});
-		return Boolean.TRUE.equals(result);
-	}
-
 	private @Nonnull Client createClient() {
 		try {
 			SSLContext sslcontext = SSLContext.getInstance("TLS");

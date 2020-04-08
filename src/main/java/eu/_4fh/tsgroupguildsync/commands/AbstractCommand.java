@@ -13,6 +13,6 @@ public interface AbstractCommand {
 
 	public @Nonnull String getCommandStart();
 
-	public void executeCommand(final @Nonnull int senderId, final @Nonnull List<String> commandAndParameters,
-			final @Nonnull SyncPlugin plugin);
+	public void executeCommand(final @Nonnull int senderId, final boolean isAdmin,
+			final @Nonnull List<String> commandAndParameters, final @Nonnull SyncPlugin plugin);
 }

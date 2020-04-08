@@ -26,8 +26,8 @@ import de.stefan1200.jts3serverquery.TS3ServerQueryException;
 import de.stefan1200.util.ArrangedPropertiesWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
-import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
 import eu._4fh.tsgroupguildsync.commands.AuthMeCommand;
+import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
 import eu._4fh.tsgroupguildsync.sync.RestSync;
 import eu._4fh.tsgroupguildsync.sync.SyncTask;
 import io.undertow.Undertow;
@@ -146,7 +146,7 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 		if (command == null) {
 			return false;
 		}
-		command.executeCommand(Integer.parseInt(eventInfo.get("invokerid")), commandSplitted, this);
+		command.executeCommand(Integer.parseInt(eventInfo.get("invokerid")), isAdmin, commandSplitted, this);
 		return true;
 	}
 
