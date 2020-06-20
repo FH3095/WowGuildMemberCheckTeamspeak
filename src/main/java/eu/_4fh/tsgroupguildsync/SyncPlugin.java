@@ -28,6 +28,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import eu._4fh.tsgroupguildsync.commands.AbstractCommand;
 import eu._4fh.tsgroupguildsync.commands.AuthMeCommand;
 import eu._4fh.tsgroupguildsync.commands.ForceRefreshCommand;
+import eu._4fh.tsgroupguildsync.rest.RestHelper;
 import eu._4fh.tsgroupguildsync.sync.RestSync;
 import eu._4fh.tsgroupguildsync.sync.SyncTask;
 import io.undertow.Undertow;
@@ -163,7 +164,24 @@ public class SyncPlugin implements HandleBotEvents, HandleTS3Events, LoadConfigu
 	}
 
 	public void handleTS3Events(String eventType, HashMap<String, String> eventInfo) {
-		// Nothing to do
+		if (eventType.equalsIgnoreCase("notifycliententerview")) {
+			final String message = getConfig().getAuthMsgText();
+			if (message != null && !message.isEmpty()) {
+				final List<Long> serverGroups = Util.split(eventInfo.get("client_servergroups"), ",", Long::parseLong);
+				getLog().debug("Checking to send link to user joined: " + serverGroups.toString() + " for "
+						+ eventInfo.toString());
+				if (!Collections.disjoint(serverGroups, getConfig().getAuthMsgGroups())) {
+					// Here we are sure, that we should send the message to the user
+					final int clId = Integer.parseInt(eventInfo.get("clid"));
+					final int clDbId = Integer.parseInt(eventInfo.get("client_database_id"));
+					final String link = new RestHelper(getConfig()).getAuthStartUrl(clDbId).toASCIIString();
+					getLog().debug("Sending link to " + clId + "(" + clDbId + "): " + link);
+					getMod().sendMessageToClient(getConfig().getPrefix(), "chat", clId,
+							message + " [URL]" + link + "[/URL]");
+
+				}
+			}
+		}
 	}
 
 	// Config events

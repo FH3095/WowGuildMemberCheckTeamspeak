@@ -51,6 +51,11 @@ public class Config implements LoadConfiguration {
 		TS_ON_LEAVE_REMOVE_FROM_GROUPS("onLeave_RemoveFromGroups",
 				"Same as onLeave_AddToGroups but removes user groups. Optional.", null, true),
 
+		TS_AUTH_MESSAGE_GROUPS("authMessage_groups",
+				"This groups will receive a message with a link to authenticate on joining the ts server", null, true),
+
+		TS_AUTH_MESSAGE_TEXT("authMessage_text", "This message will be send to authMessage_groups", null, true),
+
 		HTTP_SERVER_ADDRESS("HttpServerAddress", "Address for the embedded http server", "localhost", false),
 
 		HTTP_SERVER_PORT("HttpServerPort", "Port for the embedded http server");
@@ -90,6 +95,8 @@ public class Config implements LoadConfiguration {
 	private @NonNull Set<Long> onJoinRemoveFrom;
 	private @NonNull Set<Long> onLeaveAddTo;
 	private @NonNull Set<Long> onLeaveRemoveFrom;
+	private @Nonnull Set<Long> authMsgGroups;
+	private @CheckForNull String authMsgText;
 	private String httpServerAddress;
 	private int httpServerPort;
 
@@ -100,6 +107,7 @@ public class Config implements LoadConfiguration {
 		onJoinRemoveFrom = new HashSet<>();
 		onLeaveAddTo = new HashSet<>();
 		onLeaveRemoveFrom = new HashSet<>();
+		authMsgGroups = new HashSet<>();
 	}
 
 	@Override
@@ -175,6 +183,11 @@ public class Config implements LoadConfiguration {
 
 		httpServerAddress = readConfigStr(config, ConfigKeys.HTTP_SERVER_ADDRESS);
 		httpServerPort = readConfigInt(config, ConfigKeys.HTTP_SERVER_PORT, 1);
+
+		authMsgGroups = new HashSet<>();
+		authMsgGroups.addAll(splitStringToLongList(readConfigStr(config, ConfigKeys.TS_AUTH_MESSAGE_GROUPS)));
+		authMsgGroups = Collections.unmodifiableSet(authMsgGroups);
+		authMsgText = readConfigStr(config, ConfigKeys.TS_AUTH_MESSAGE_TEXT);
 
 		return true;
 	}
@@ -263,5 +276,13 @@ public class Config implements LoadConfiguration {
 
 	public int httpServerPort() {
 		return httpServerPort;
+	}
+
+	public @Nonnull Set<Long> getAuthMsgGroups() {
+		return authMsgGroups;
+	}
+
+	public @CheckForNull String getAuthMsgText() {
+		return authMsgText;
 	}
 }
