@@ -24,6 +24,7 @@ public class RestSync {
 	private final @Nonnull Set<Long> restMembers;
 	private final @Nonnull Set<Long> toAdd;
 	private final @Nonnull Set<Long> toDel;
+	private final @Nonnull long defaultServerGroup;
 	private final @Nonnull RestHelper restHelper;
 	private final @Nonnull JTS3ServerQuery query;
 	private final @Nonnull Logger log;
@@ -44,6 +45,9 @@ public class RestSync {
 			currentGroupMembers = Collections.unmodifiableSet(mainGroupClients.stream()
 					.map(map -> Long.parseLong(map.get("cldbid"))).collect(Collectors.toSet()));
 			restMembers = Collections.unmodifiableSet(new HashSet<>(restHelper.getAllAccountIds()));
+
+			final Map<String, String> serverInfo = query.getInfo(JTS3ServerQuery.INFOMODE_SERVERINFO, 0);
+			defaultServerGroup = Long.parseLong(serverInfo.getOrDefault("virtualserver_default_server_group", "-1"));
 		}
 	}
 
@@ -104,6 +108,7 @@ public class RestSync {
 			// User should be removed from all groups
 			removeFromGroups.clear();
 			removeFromGroups.addAll(currentGroups);
+			removeFromGroups.remove(defaultServerGroup);
 		} else {
 			// Only remove from groups, the user is member of
 			removeFromGroups.retainAll(currentGroups);
